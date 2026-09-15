@@ -63,4 +63,234 @@ let timer;q.addEventListener("input",()=>{clearTimeout(timer);timer=setTimeout(r
 document.getElementById("clear").onclick=()=>{q.value="";q.focus();render()};
 render();
 </script>
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const SUPABASE_URL = "https://fezeqaqrqosefjklkpdg.supabase.co";
+const SUPABASE_KEY = "sb_publishable_JeOZhduQY2zIhdP0Eaw4bA_9BHbA3w8";
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function getDeviceId() {
+  let id = localStorage.getItem("pecacerta_device_id");
+
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem("pecacerta_device_id", id);
+  }
+
+  return id;
+}
+
+const appOriginal = document.body.innerHTML;
+
+function mostrarLogin(mensagem = "") {
+  document.body.innerHTML = `
+    <div style="
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#f3f4f6;
+      padding:20px;
+      font-family:Arial,sans-serif;
+    ">
+      <div style="
+        background:white;
+        width:100%;
+        max-width:380px;
+        padding:28px;
+        border-radius:16px;
+        box-shadow:0 4px 20px #0002;
+      ">
+
+        <h1 style="
+          margin:0 0 6px;
+          text-align:center;
+          color:#111827;
+        ">
+          Peça Certa Mobile
+        </h1>
+
+        <div style="
+          text-align:center;
+          margin-bottom:25px;
+          color:#6b7280;
+        ">
+          Acesso autorizado
+        </div>
+
+        <input
+          id="loginUsuario"
+          placeholder="Usuário"
+          autocomplete="username"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            padding:14px;
+            margin-bottom:12px;
+            font-size:17px;
+            border:1px solid #d1d5db;
+            border-radius:10px;
+          "
+        >
+
+        <input
+          id="loginSenha"
+          type="password"
+          placeholder="Senha"
+          autocomplete="current-password"
+          style="
+            width:100%;
+            box-sizing:border-box;
+            padding:14px;
+            margin-bottom:14px;
+            font-size:17px;
+            border:1px solid #d1d5db;
+            border-radius:10px;
+          "
+        >
+
+        <button
+          id="btnEntrar"
+          style="
+            width:100%;
+            padding:14px;
+            border:0;
+            border-radius:10px;
+            background:#111827;
+            color:white;
+            font-size:17px;
+            font-weight:bold;
+          "
+        >
+          ENTRAR
+        </button>
+
+        <div id="loginMsg" style="
+          margin-top:15px;
+          text-align:center;
+          color:#b91c1c;
+          font-size:14px;
+        ">${mensagem}</div>
+
+      </div>
+    </div>
+  `;
+
+  document.getElementById("btnEntrar").onclick = entrar;
+
+  document.getElementById("loginSenha")
+    .addEventListener("keydown", e => {
+      if (e.key === "Enter") entrar();
+    });
+}
+
+async function entrar() {
+
+  const usuario =
+    document.getElementById("loginUsuario").value.trim().toLowerCase();
+
+  const senha =
+    document.getElementById("loginSenha").value;
+
+  const msg =
+    document.getElementById("loginMsg");
+
+  if (!usuario || !senha) {
+    msg.textContent = "Digite usuário e senha.";
+    return;
+  }
+
+  msg.textContent = "Verificando...";
+
+  const email = usuario.includes("@")
+    ? usuario
+    : usuario + "@pecacerta.local";
+
+  const { data, error } =
+    await sb.auth.signInWithPassword({
+      email: email,
+      password: senha
+    });
+
+  if (error || !data.user) {
+    msg.textContent = "Usuário ou senha incorretos.";
+    return;
+  }
+
+  await verificarAparelho(data.user);
+}
+
+async function verificarAparelho(user) {
+
+  const deviceId = getDeviceId();
+
+  const { data: cadastro, error } =
+    await sb
+      .from("usuarios_mobile")
+      .select("id,nome,ativo,device_id")
+      .eq("id", user.id)
+      .single();
+
+  if (error || !cadastro) {
+    await sb.auth.signOut();
+    mostrarLogin("Usuário sem autorização.");
+    return;
+  }
+
+  if (!cadastro.ativo) {
+    await sb.auth.signOut();
+    mostrarLogin("Usuário bloqueado pelo administrador.");
+    return;
+  }
+
+  if (!cadastro.device_id) {
+
+    const { error: erroVinculo } =
+      await sb
+        .from("usuarios_mobile")
+        .update({ device_id: deviceId })
+        .eq("id", user.id)
+        .is("device_id", null);
+
+    if (erroVinculo) {
+      await sb.auth.signOut();
+      mostrarLogin("Não foi possível autorizar este aparelho.");
+      return;
+    }
+
+    liberarApp();
+    return;
+  }
+
+  if (cadastro.device_id !== deviceId) {
+    await sb.auth.signOut();
+    mostrarLogin("Este usuário já está vinculado a outro celular.");
+    return;
+  }
+
+  liberarApp();
+}
+
+function liberarApp() {
+  document.body.innerHTML = appOriginal;
+}
+
+async function iniciarControle() {
+
+  const {
+    data: { session }
+  } = await sb.auth.getSession();
+
+  if (!session) {
+    mostrarLogin();
+    return;
+  }
+
+  await verificarAparelho(session.user);
+}
+
+iniciarControle();
+</script>
 </body></html>
