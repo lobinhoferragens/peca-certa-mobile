@@ -219,22 +219,23 @@ const error = null;
         : "LIVRE";
 
     div.innerHTML = `
-      <strong>${usuario.nome}</strong><br>
-      Aparelho: ${aparelho}
+  <strong>${usuario.nome}</strong><br>
+  Aparelho: ${aparelho}
 
-      ${
-        usuario.device_id
-        ? `<button onclick="resetar('${usuario.id}')">
-             LIBERAR APARELHO
-           </button>`
-        <button onclick="excluirUsuario('${usuario.id}')" style="background:#b91c1c;color:white;">
-  EXCLUIR USUÁRIO
-</button>
-        : ""
-      }
-    `;
+  ${
+    usuario.device_id
+      ? `<button onclick="resetar('${usuario.id}')">
+           LIBERAR APARELHO
+         </button>`
+      : ""
+  }
 
-    area.appendChild(div);
+  <button onclick="excluirUsuario('${usuario.id}')" style="background:#b91c1c;color:white;">
+    EXCLUIR USUÁRIO
+  </button>
+`;
+
+area.appendChild(div);
   });
 }
 
