@@ -274,7 +274,28 @@ async function verificarAparelho(user) {
 }
 
 function liberarApp() {
-  document.body.innerHTML = appOriginal;
+    document.body.innerHTML = appOriginal;
+
+    const q = document.getElementById("q");
+    const clear = document.getElementById("clear");
+
+    if (q) {
+        let timer;
+        q.addEventListener("input", () => {
+            clearTimeout(timer);
+            timer = setTimeout(render, 80);
+        });
+    }
+
+    if (clear) {
+        clear.onclick = () => {
+            q.value = "";
+            q.focus();
+            render();
+        };
+    }
+
+    render();
 }
 
 async function iniciarControle() {
