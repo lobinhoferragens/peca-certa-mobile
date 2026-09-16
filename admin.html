@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peça Certa - Administração</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f4f6;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .box {
+      max-width: 600px;
+      margin: 40px auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,.12);
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    input, button {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 7px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    button {
+      background: #111827;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .usuario {
+      border-top: 1px solid #ddd;
+      padding: 15px 0;
+    }
+
+    .usuario button {
+      background: #dc2626;
+    }
+
+    #msg {
+      margin-top: 15px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="box">
+
+  <h2>Peça Certa Mobile</h2>
+  <p style="text-align:center">Controle de usuários</p>
+
+  <div id="login">
+
+    <input id="email"
+           type="email"
+           placeholder="Usuário / e-mail">
+
+    <input id="senha"
+           type="password"
+           placeholder="Senha">
+
+    <button onclick="entrar()">
+      ENTRAR
+    </button>
+
+  </div>
+
+  <div id="painel" style="display:none">
+
+    <h3>Usuários cadastrados</h3>
+
+    <div id="usuarios"></div>
+
+    <button onclick="sair()">
+      SAIR
+    </button>
+
+  </div>
+
+  <div id="msg"></div>
+
+</div>
+
+<script>
+
+const SUPABASE_URL =
+"https://fezeqaqrqosefjklkpdg.supabase.co";
+
+const SUPABASE_KEY =
+"sb_publishable_JeOZhduQY2zIhdP0Eaw4bA_9BHbA3w8";
+
+const sb =
+supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_KEY
+);
+
+async function entrar() {
+
+  const email =
+    document.getElementById("email").value;
+
+  const senha =
+    document.getElementById("senha").value;
+
+  const { error } =
+    await sb.auth.signInWithPassword({
+      email: email,
+      password: senha
+    });
+
+  if (error) {
+    document.getElementById("msg").innerText =
+      "Usuário ou senha inválidos.";
+    return;
+  }
+
+  document.getElementById("login").style.display =
+    "none";
+
+  document.getElementById("painel").style.display =
+    "block";
+
+  document.getElementById("msg").innerText = "";
+
+  carregarUsuarios();
+}
+
+async function carregarUsuarios() {
+
+  const { data, error } =
+    await sb
+      .from("usuarios_mobile")
+      .select("id,nome,ativo,device_id")
+      .order("nome");
+
+  if (error) {
+    document.getElementById("msg").innerText =
+      "Erro ao carregar usuários.";
+    return;
+  }
+
+  const area =
+    document.getElementById("usuarios");
+
+  area.innerHTML = "";
+
+  data.forEach(usuario => {
+
+    const div =
+      document.createElement("div");
+
+    div.className = "usuario";
+
+    const aparelho =
+      usuario.device_id
+        ? "VINCULADO"
+        : "LIVRE";
+
+    div.innerHTML = `
+      <strong>${usuario.nome}</strong><br>
+      Aparelho: ${aparelho}
+
+      ${
+        usuario.device_id
+        ? `<button onclick="resetar('${usuario.id}')">
+             LIBERAR APARELHO
+           </button>`
+        : ""
+      }
+    `;
+
+    area.appendChild(div);
+  });
+}
+
+async function resetar(id) {
+
+  if (!confirm(
+    "Liberar este usuário para outro aparelho?"
+  )) return;
+
+  const {
+    data: { session }
+  } = await sb.auth.getSession();
+
+  if (!session) {
+    alert("Sessão expirada.");
+    return;
+  }
+
+  const resposta =
+    await fetch(
+      "https://fezeqaqrqosefjklkpdg.supabase.co/functions/v1/admin-usuarios",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json",
+
+          "Authorization":
+            "Bearer " +
+            session.access_token,
+
+          "apikey":
+            SUPABASE_KEY
+        },
+
+        body: JSON.stringify({
+          acao: "reset_device",
+          usuario_id: id
+        })
+      }
+    );
+
+  const resultado =
+    await resposta.json();
+
+  if (!resposta.ok) {
+    alert(
+      resultado.error ||
+      "Erro ao liberar aparelho."
+    );
+    return;
+  }
+
+  alert("Aparelho liberado!");
+
+  carregarUsuarios();
+}
+
+async function sair() {
+
+  await sb.auth.signOut();
+
+  location.reload();
+}
+
+</script>
+
+</body>
+</html>
