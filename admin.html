@@ -227,6 +227,9 @@ const error = null;
         ? `<button onclick="resetar('${usuario.id}')">
              LIBERAR APARELHO
            </button>`
+        <button onclick="excluirUsuario('${usuario.id}')" style="background:#b91c1c;color:white;">
+  EXCLUIR USUÁRIO
+</button>
         : ""
       }
     `;
@@ -343,6 +346,54 @@ async function resetar(id) {
   }
 
   alert("Aparelho liberado!");
+
+  carregarUsuarios();
+}
+
+  async function excluirUsuario(id) {
+
+  if (!confirm(
+    "ATENÇÃO: deseja excluir este usuário definitivamente?"
+  )) return;
+
+  const {
+    data: { session }
+  } = await sb.auth.getSession();
+
+  if (!session) {
+    alert("Sessão expirada.");
+    return;
+  }
+
+  const resposta = await fetch(
+    "https://fezeqaqrqosefjklkpdg.supabase.co/functions/v1/admin-usuarios",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + session.access_token,
+        "apikey": SUPABASE_KEY
+      },
+
+      body: JSON.stringify({
+        acao: "excluir_usuario",
+        usuario_id: id
+      })
+    }
+  );
+
+  const resultado = await resposta.json();
+
+  if (!resposta.ok) {
+    alert(
+      resultado.error ||
+      "Erro ao excluir usuário."
+    );
+    return;
+  }
+
+  alert("Usuário excluído com sucesso!");
 
   carregarUsuarios();
 }
