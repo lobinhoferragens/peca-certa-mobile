@@ -148,12 +148,41 @@ async function entrar() {
 
 async function carregarUsuarios() {
 
-  const { data, error } =
-    await sb
-      .from("usuarios_mobile")
-      .select("id,nome,ativo,device_id")
-      .order("nome");
+const {
+  data: { session }
+} = await sb.auth.getSession();
 
+if (!session) {
+  document.getElementById("msg").innerText = "Sessão expirada.";
+  return;
+}
+
+const resposta = await fetch(
+  "https://fezeqaqrqosefjklkpdg.supabase.co/functions/v1/admin-usuarios",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + session.access_token,
+      "apikey": SUPABASE_KEY
+    },
+    body: JSON.stringify({
+      acao: "listar_usuarios"
+    })
+  }
+);
+
+const resultado = await resposta.json();
+
+if (!resposta.ok) {
+  document.getElementById("msg").innerText =
+    resultado.error || "Erro ao carregar usuários.";
+  return;
+}
+
+const data = resultado.usuarios;
+const error = null;
+  
   if (error) {
     document.getElementById("msg").innerText =
       "Erro ao carregar usuários.";
