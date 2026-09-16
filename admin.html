@@ -89,6 +89,18 @@
 
     <h3>Usuários cadastrados</h3>
 
+    <h3>Cadastrar novo usuário</h3>
+
+<input id="novoNome" type="text" placeholder="Nome">
+
+<input id="novoEmail" type="email" placeholder="Login / e-mail">
+
+<input id="novaSenha" type="password" placeholder="Senha">
+
+<button onclick="criarUsuario()">
+  CADASTRAR USUÁRIO
+</button>
+
     <div id="usuarios"></div>
 
     <button onclick="sair()">
@@ -221,6 +233,62 @@ const error = null;
 
     area.appendChild(div);
   });
+}
+
+async function criarUsuario() {
+
+  const nome = document.getElementById("novoNome").value.trim();
+  const email = document.getElementById("novoEmail").value.trim();
+  const senha = document.getElementById("novaSenha").value;
+
+  if (!nome || !email || !senha) {
+    alert("Preencha nome, login/e-mail e senha.");
+    return;
+  }
+
+  const {
+    data: { session }
+  } = await sb.auth.getSession();
+
+  if (!session) {
+    alert("Sessão expirada.");
+    return;
+  }
+
+  const resposta = await fetch(
+    "https://fezeqaqrqosefjklkpdg.supabase.co/functions/v1/admin-usuarios",
+    {
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + session.access_token,
+        "apikey": SUPABASE_KEY
+      },
+
+      body: JSON.stringify({
+        acao: "criar_usuario",
+        nome: nome,
+        email: email,
+        senha: senha
+      })
+    }
+  );
+
+  const resultado = await resposta.json();
+
+  if (!resposta.ok) {
+    alert(resultado.error || "Erro ao cadastrar usuário.");
+    return;
+  }
+
+  alert("Usuário cadastrado com sucesso!");
+
+  document.getElementById("novoNome").value = "";
+  document.getElementById("novoEmail").value = "";
+  document.getElementById("novaSenha").value = "";
+
+  carregarUsuarios();
 }
 
 async function resetar(id) {
